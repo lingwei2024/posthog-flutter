@@ -1,0 +1,13 @@
+{
+  "name": "posthog_flutter",
+  "version": "5.18.0",
+  "description": "PostHog Flutter plugin for HarmonyOS",
+  "main": "src/main/ets/components/plugin/PosthogFlutterPlugin.ets",
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@ohos/flutter_ohos": "file:./har/flutter_ohos.har"
+  },
+  "devDependencies": {},
+  "dynamicDependencies": {}
+}
