@@ -148,7 +148,7 @@ export default class PosthogFlutterPlugin implements FlutterPlugin, MethodCallHa
 
   private async setup(call: MethodCall, result: MethodResult): Promise<void> {
     try {
-      const args = call.args as Record<string, Object>;
+      const args = call.args as Map<string, Object>;
       if (!args) {
         result.error('PosthogFlutterException', 'Arguments is null or empty', null);
         return;
@@ -172,10 +172,10 @@ export default class PosthogFlutterPlugin implements FlutterPlugin, MethodCallHa
 
   private async identify(call: MethodCall, result: MethodResult): Promise<void> {
     try {
-      const args = call.args as Record<string, Object>;
-      const userId = args['userId'] as string;
-      const userProperties = args['userProperties'] as Record<string, Object> | undefined;
-      const userPropertiesSetOnce = args['userPropertiesSetOnce'] as Record<string, Object> | undefined;
+      const args = call.args as Map<string, Object>;
+      const userId = args.get('userId') as string;
+      const userProperties = args.get('userProperties') as Map<string, Object> | undefined;
+      const userPropertiesSetOnce = args.get('userPropertiesSetOnce') as Map<string, Object> | undefined;
       await this.client.identify(userId, userProperties, userPropertiesSetOnce);
       result.success(null);
     } catch (e) {
@@ -185,9 +185,9 @@ export default class PosthogFlutterPlugin implements FlutterPlugin, MethodCallHa
 
   private async setPersonProperties(call: MethodCall, result: MethodResult): Promise<void> {
     try {
-      const args = call.args as Record<string, Object>;
-      const userPropertiesToSet = args['userPropertiesToSet'] as Record<string, Object> | undefined;
-      const userPropertiesToSetOnce = args['userPropertiesToSetOnce'] as Record<string, Object> | undefined;
+      const args = call.args as Map<string, Object>;
+      const userPropertiesToSet = args.get('userPropertiesToSet') as Map<string, Object> | undefined;
+      const userPropertiesToSetOnce = args.get('userPropertiesToSetOnce') as Map<string, Object> | undefined;
       await this.client.setPersonProperties(userPropertiesToSet, userPropertiesToSetOnce);
       result.success(null);
     } catch (e) {
@@ -197,11 +197,11 @@ export default class PosthogFlutterPlugin implements FlutterPlugin, MethodCallHa
 
   private async capture(call: MethodCall, result: MethodResult): Promise<void> {
     try {
-      const args = call.args as Record<string, Object>;
-      const eventName = args['eventName'] as string;
-      const properties = args['properties'] as Record<string, Object> | undefined;
-      const userProperties = args['userProperties'] as Record<string, Object> | undefined;
-      const userPropertiesSetOnce = args['userPropertiesSetOnce'] as Record<string, Object> | undefined;
+      const args = call.args as Map<string, Object>;
+      const eventName = args.get('eventName') as string;
+      const properties = args.get('properties') as Map<string, Object> | undefined;
+      const userProperties = args.get('userProperties') as Map<string, Object> | undefined;
+      const userPropertiesSetOnce = args.get('userPropertiesSetOnce') as Map<string, Object> | undefined;
       await this.client.capture(eventName, properties, userProperties, userPropertiesSetOnce);
       result.success(null);
     } catch (e) {
@@ -211,9 +211,9 @@ export default class PosthogFlutterPlugin implements FlutterPlugin, MethodCallHa
 
   private async screen(call: MethodCall, result: MethodResult): Promise<void> {
     try {
-      const args = call.args as Record<string, Object>;
-      const screenName = args['screenName'] as string;
-      const properties = args['properties'] as Record<string, Object> | undefined;
+      const args = call.args as Map<string, Object>;
+      const screenName = args.get('screenName') as string;
+      const properties = args.get('properties') as Map<string, Object> | undefined;
       await this.client.screen(screenName, properties);
       result.success(null);
     } catch (e) {
@@ -223,8 +223,8 @@ export default class PosthogFlutterPlugin implements FlutterPlugin, MethodCallHa
 
   private async alias(call: MethodCall, result: MethodResult): Promise<void> {
     try {
-      const args = call.args as Record<string, Object>;
-      const alias = args['alias'] as string;
+      const args = call.args as Map<string, Object>;
+      const alias = args.get('alias') as string;
       await this.client.alias(alias);
       result.success(null);
     } catch (e) {
@@ -278,8 +278,8 @@ export default class PosthogFlutterPlugin implements FlutterPlugin, MethodCallHa
 
   private isFeatureEnabled(call: MethodCall, result: MethodResult): void {
     try {
-      const args = call.args as Record<string, Object>;
-      const key = args['key'] as string;
+      const args = call.args as Map<string, Object>;
+      const key = args.get('key') as string;
       result.success(this.client.isFeatureEnabled(key));
     } catch (e) {
       result.error('PosthogFlutterException', (e as Error).message, null);
@@ -297,10 +297,10 @@ export default class PosthogFlutterPlugin implements FlutterPlugin, MethodCallHa
 
   private async group(call: MethodCall, result: MethodResult): Promise<void> {
     try {
-      const args = call.args as Record<string, Object>;
-      const groupType = args['groupType'] as string;
-      const groupKey = args['groupKey'] as string;
-      const groupProperties = args['groupProperties'] as Record<string, Object> | undefined;
+      const args = call.args as Map<string, Object>;
+      const groupType = args.get('groupType') as string;
+      const groupKey = args.get('groupKey') as string;
+      const groupProperties = args.get('groupProperties') as Map<string, Object> | undefined;
       await this.client.group(groupType, groupKey, groupProperties);
       result.success(null);
     } catch (e) {
@@ -310,8 +310,8 @@ export default class PosthogFlutterPlugin implements FlutterPlugin, MethodCallHa
 
   private getFeatureFlag(call: MethodCall, result: MethodResult): void {
     try {
-      const args = call.args as Record<string, Object>;
-      const key = args['key'] as string;
+      const args = call.args as Map<string, Object>;
+      const key = args.get('key') as string;
       result.success(this.client.getFeatureFlag(key));
     } catch (e) {
       result.error('PosthogFlutterException', (e as Error).message, null);
@@ -320,8 +320,8 @@ export default class PosthogFlutterPlugin implements FlutterPlugin, MethodCallHa
 
   private getFeatureFlagPayload(call: MethodCall, result: MethodResult): void {
     try {
-      const args = call.args as Record<string, Object>;
-      const key = args['key'] as string;
+      const args = call.args as Map<string, Object>;
+      const key = args.get('key') as string;
       result.success(this.client.getFeatureFlagPayload(key));
     } catch (e) {
       result.error('PosthogFlutterException', (e as Error).message, null);
@@ -330,9 +330,9 @@ export default class PosthogFlutterPlugin implements FlutterPlugin, MethodCallHa
 
   private getFeatureFlagResult(call: MethodCall, result: MethodResult): void {
     try {
-      const args = call.args as Record<string, Object>;
-      const key = args['key'] as string;
-      const sendEvent = args['sendEvent'] as boolean ?? true;
+      const args = call.args as Map<string, Object>;
+      const key = args.get('key') as string;
+      const sendEvent = args.get('sendEvent') as boolean ?? true;
 
       if (!key) {
         result.error('PosthogFlutterException', 'Missing argument: key', null);
@@ -362,9 +362,9 @@ export default class PosthogFlutterPlugin implements FlutterPlugin, MethodCallHa
 
   private register(call: MethodCall, result: MethodResult): void {
     try {
-      const args = call.args as Record<string, Object>;
-      const key = args['key'] as string;
-      const value = args['value'] as Object;
+      const args = call.args as Map<string, Object>;
+      const key = args.get('key') as string;
+      const value = args.get('value') as Object;
       this.client.register(key, value);
       result.success(null);
     } catch (e) {
@@ -374,8 +374,8 @@ export default class PosthogFlutterPlugin implements FlutterPlugin, MethodCallHa
 
   private unregister(call: MethodCall, result: MethodResult): void {
     try {
-      const args = call.args as Record<string, Object>;
-      const key = args['key'] as string;
+      const args = call.args as Map<string, Object>;
+      const key = args.get('key') as string;
       this.client.unregister(key);
       result.success(null);
     } catch (e) {
@@ -385,8 +385,8 @@ export default class PosthogFlutterPlugin implements FlutterPlugin, MethodCallHa
 
   private debugMethod(call: MethodCall, result: MethodResult): void {
     try {
-      const args = call.args as Record<string, Object>;
-      const debugEnabled = args['debug'] as boolean;
+      const args = call.args as Map<string, Object>;
+      const debugEnabled = args.get('debug') as boolean;
       this.client.setDebug(debugEnabled);
       result.success(null);
     } catch (e) {
@@ -405,14 +405,14 @@ export default class PosthogFlutterPlugin implements FlutterPlugin, MethodCallHa
 
   private async captureException(call: MethodCall, result: MethodResult): Promise<void> {
     try {
-      const args = call.args as Record<string, Object>;
+      const args = call.args as Map<string, Object>;
       if (!args) {
         result.error('INVALID_ARGUMENTS', 'Invalid arguments for captureException', null);
         return;
       }
 
-      const properties = args['properties'] as Record<string, Object> | undefined;
-      const timestampMs = args['timestamp'] as number | undefined;
+      const properties = args.get('properties') as Map<string, Object> | undefined;
+      const timestampMs = args.get('timestamp') as number | undefined;
 
       await this.client.captureException(properties, timestampMs);
       result.success(null);

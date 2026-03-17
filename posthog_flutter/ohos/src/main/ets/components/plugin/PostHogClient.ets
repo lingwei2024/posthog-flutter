@@ -9,6 +9,36 @@ const DOMAIN = 0x0001;
 const DEFAULT_HOST = 'https://us.i.posthog.com';
 const PREFS_STORE_NAME = 'posthog_flutter_prefs';
 
+// Helper: convert Map<string, Object> to Record<string, Object> for JSON serialization.
+// Flutter Method Channel passes Dart Maps as ArkTS Map, but JSON.stringify cannot
+// serialize Map instances (outputs "{}"). This recursively converts them to Records.
+function mapToRecord(map: Map<string, Object>): Record<string, Object> {
+  const record: Record<string, Object> = {};
+  map.forEach((value: Object, key: string) => {
+    if (value instanceof Map) {
+      record[key] = mapToRecord(value as Map<string, Object>);
+    } else {
+      record[key] = value;
+    }
+  });
+  return record;
+}
+
+// Helper: copy properties from a source (Map or Record) into a target Map.
+// Handles both Map and Record since Method Channel may pass either type.
+function copyPropertiesToMap(source: Object, target: Map<string, Object>): void {
+  if (source instanceof Map) {
+    (source as Map<string, Object>).forEach((value: Object, key: string) => {
+      target.set(key, value);
+    });
+  } else {
+    const keys = Object.keys(source as Record<string, Object>);
+    for (let i = 0; i < keys.length; i++) {
+      target.set(keys[i], (source as Record<string, Object>)[keys[i]]);
+    }
+  }
+}
+
 class PostHogEvent {
   event: string;
   properties: Map<string, Object>;
@@ -23,7 +53,11 @@ class PostHogEvent {
   toRecord(): Record<string, Object> {
     const propsRecord: Record<string, Object> = {};
     this.properties.forEach((value: Object, key: string) => {
-      propsRecord[key] = value;
+      if (value instanceof Map) {
+        propsRecord[key] = mapToRecord(value as Map<string, Object>);
+      } else {
+        propsRecord[key] = value;
+      }
     });
     const result: Record<string, Object> = {
       'event': this.event as Object,
@@ -85,23 +119,23 @@ export class PostHogClient {
     return PostHogClient.instance!;
   }
 
-  async setup(config: Record<string, Object>, context: Context): Promise<void> {
+  async setup(config: Map<string, Object>, context: Context): Promise<void> {
     this.appContext = context;
 
-    this.apiKey = (config['apiKey'] as string) || '';
-    this.host = (config['host'] as string) || DEFAULT_HOST;
-    this.debugEnabled = (config['debug'] as boolean) || false;
-    this.optedOut = (config['optOut'] as boolean) || false;
-    this.flushAt = (config['flushAt'] as number) || 20;
-    this.maxQueueSize = (config['maxQueueSize'] as number) || 1000;
-    this.maxBatchSize = (config['maxBatchSize'] as number) || 50;
-    this.flushIntervalSeconds = (config['flushInterval'] as number) || 30;
-    this.sendFeatureFlagEvent = (config['sendFeatureFlagEvents'] as boolean) ?? true;
-    this.preloadFeatureFlagsEnabled = (config['preloadFeatureFlags'] as boolean) ?? true;
-    this.personProfiles = (config['personProfiles'] as string) || 'identifiedOnly';
-    this.sessionReplay = (config['sessionReplay'] as boolean) || false;
-    this.sdkName = (config['sdkName'] as string) || 'posthog-flutter';
-    this.sdkVersion = (config['sdkVersion'] as string) || '5.18.0';
+    this.apiKey = (config.get('apiKey') as string) || '';
+    this.host = (config.get('host') as string) || DEFAULT_HOST;
+    this.debugEnabled = (config.get('debug') as boolean) || false;
+    this.optedOut = (config.get('optOut') as boolean) || false;
+    this.flushAt = (config.get('flushAt') as number) || 20;
+    this.maxQueueSize = (config.get('maxQueueSize') as number) || 1000;
+    this.maxBatchSize = (config.get('maxBatchSize') as number) || 50;
+    this.flushIntervalSeconds = (config.get('flushInterval') as number) || 30;
+    this.sendFeatureFlagEvent = (config.get('sendFeatureFlagEvents') as boolean) ?? true;
+    this.preloadFeatureFlagsEnabled = (config.get('preloadFeatureFlags') as boolean) ?? true;
+    this.personProfiles = (config.get('personProfiles') as string) || 'identifiedOnly';
+    this.sessionReplay = (config.get('sessionReplay') as boolean) || false;
+    this.sdkName = (config.get('sdkName') as string) || 'posthog-flutter';
+    this.sdkVersion = (config.get('sdkVersion') as string) || '5.18.0';
 
     if (this.apiKey === '') {
       this.logError('apiKey is missing!');
@@ -133,8 +167,8 @@ export class PostHogClient {
     this.onFeatureFlagsCallback = callback;
   }
 
-  async identify(userId: string, userProperties?: Record<string, Object>,
-    userPropertiesSetOnce?: Record<string, Object>): Promise<void> {
+  async identify(userId: string, userProperties?: Map<string, Object>,
+    userPropertiesSetOnce?: Map<string, Object>): Promise<void> {
     if (this.optedOut) return;
 
     const previousDistinctId = this.currentDistinctId;
@@ -153,8 +187,8 @@ export class PostHogClient {
     await this.enqueueEvent('$identify', properties);
   }
 
-  async setPersonProperties(userPropertiesToSet?: Record<string, Object>,
-    userPropertiesToSetOnce?: Record<string, Object>): Promise<void> {
+  async setPersonProperties(userPropertiesToSet?: Map<string, Object>,
+    userPropertiesToSetOnce?: Map<string, Object>): Promise<void> {
     if (this.optedOut) return;
 
     const properties: Map<string, Object> = new Map();
@@ -168,17 +202,14 @@ export class PostHogClient {
     await this.enqueueEvent('$set', properties);
   }
 
-  async capture(eventName: string, properties?: Record<string, Object>,
-    userProperties?: Record<string, Object>,
-    userPropertiesSetOnce?: Record<string, Object>): Promise<void> {
+  async capture(eventName: string, properties?: Map<string, Object>,
+    userProperties?: Map<string, Object>,
+    userPropertiesSetOnce?: Map<string, Object>): Promise<void> {
     if (this.optedOut) return;
 
     const eventProperties: Map<string, Object> = new Map();
     if (properties) {
-      const keys = Object.keys(properties);
-      for (let i = 0; i < keys.length; i++) {
-        eventProperties.set(keys[i], properties[keys[i]]);
-      }
+      copyPropertiesToMap(properties, eventProperties);
     }
     if (userProperties) {
       eventProperties.set('$set', userProperties);
@@ -190,16 +221,13 @@ export class PostHogClient {
     await this.enqueueEvent(eventName, eventProperties);
   }
 
-  async screen(screenName: string, properties?: Record<string, Object>): Promise<void> {
+  async screen(screenName: string, properties?: Map<string, Object>): Promise<void> {
     if (this.optedOut) return;
 
     const screenProperties: Map<string, Object> = new Map();
     screenProperties.set('$screen_name', screenName);
     if (properties) {
-      const keys = Object.keys(properties);
-      for (let i = 0; i < keys.length; i++) {
-        screenProperties.set(keys[i], properties[keys[i]]);
-      }
+      copyPropertiesToMap(properties, screenProperties);
     }
 
     await this.enqueueEvent('$screen', screenProperties);
@@ -324,7 +352,7 @@ export class PostHogClient {
   }
 
   async group(groupType: string, groupKey: string,
-    groupProperties?: Record<string, Object>): Promise<void> {
+    groupProperties?: Map<string, Object>): Promise<void> {
     if (this.optedOut) return;
 
     const properties: Map<string, Object> = new Map();
@@ -374,16 +402,13 @@ export class PostHogClient {
     }
   }
 
-  async captureException(properties?: Record<string, Object>,
+  async captureException(properties?: Map<string, Object>,
     timestamp?: number): Promise<void> {
     if (this.optedOut) return;
 
     const eventProperties: Map<string, Object> = new Map();
     if (properties) {
-      const keys = Object.keys(properties);
-      for (let i = 0; i < keys.length; i++) {
-        eventProperties.set(keys[i], properties[keys[i]]);
-      }
+      copyPropertiesToMap(properties, eventProperties);
     }
 
     await this.enqueueEvent('$exception', eventProperties, timestamp);
@@ -440,7 +465,7 @@ export class PostHogClient {
       this.eventQueue.shift();
     }
     this.eventQueue.push(event);
-
+    this.flushAt = 2
     if (this.eventQueue.length >= this.flushAt) {
       await this.flush();
     }
